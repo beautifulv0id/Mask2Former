@@ -50,6 +50,7 @@ from detectron2.utils.logger import setup_logger
 from mask2former import (
     COCOInstanceNewBaselineDatasetMapper,
     COCOPanopticNewBaselineDatasetMapper,
+    DrivabilityLabelling8SemanticSegmentationDatasetMapper,
     InstanceSegEvaluator,
     MaskFormerInstanceDatasetMapper,
     MaskFormerPanopticDatasetMapper,
@@ -58,6 +59,10 @@ from mask2former import (
     add_maskformer2_config,
 )
 
+from mask2former.utils.log_masks_hook import LogPredMasksHook
+import  mask2former.data.datasets.register_Drivability_Labelling_8_semantic_segmentation
+from detectron2.config import CfgNode as CN
+from detectron2.engine.hooks import PeriodicCheckpointer
 
 class Trainer(DefaultTrainer):
     """
@@ -168,6 +173,9 @@ class Trainer(DefaultTrainer):
         elif cfg.INPUT.DATASET_MAPPER_NAME == "coco_panoptic_lsj":
             mapper = COCOPanopticNewBaselineDatasetMapper(cfg, True)
             return build_detection_train_loader(cfg, mapper=mapper)
+        elif cfg.INPUT.DATASET_MAPPER_NAME == "drivability_labelling_8_semantic_segmentation":
+            mapper = DrivabilityLabelling8SemanticSegmentationDatasetMapper(cfg, True)
+            return build_detection_train_loader(cfg, mapper=mapper)
         else:
             mapper = None
             return build_detection_train_loader(cfg, mapper=mapper)
@@ -276,6 +284,30 @@ class Trainer(DefaultTrainer):
         res = cls.test(cfg, model, evaluators)
         res = OrderedDict({k + "_TTA": v for k, v in res.items()})
         return res
+    
+    def build_hooks(self):
+        hooks = super().build_hooks()          # existing list
+        cfg = self.cfg.MASK_LOGGER             # new node
+        if cfg.ENABLED and comm.is_main_process():
+            hooks.append(LogPredMasksHook(
+                self.cfg,
+                dataset_name=self.cfg.DATASETS.TRAIN[0],  # auto-pull samples
+                num_samples=5,
+                period=int(cfg.PERIOD),
+                inf_size=cfg.SIZE
+            ))
+            
+        hooks = [h for h in hooks if not isinstance(h, PeriodicCheckpointer)]
+        # add the capped one
+        hooks.append(
+            PeriodicCheckpointer(
+                self.checkpointer,
+                self.cfg.SOLVER.CHECKPOINT_PERIOD,
+                max_to_keep=self.cfg.SOLVER.MAX_TO_KEEP          # ← keep only last 3
+            )
+        )
+
+        return hooks
 
 
 def setup(args):
@@ -283,11 +315,21 @@ def setup(args):
     Create configs and perform basic setups.
     """
     cfg = get_cfg()
+    
+    cfg.MASK_LOGGER = CN()
+    cfg.MASK_LOGGER.ENABLED = True
+    cfg.MASK_LOGGER.PERIOD = 1000
+    cfg.MASK_LOGGER.NUM_SAMPLES = 5
+    cfg.MASK_LOGGER.SIZE = (640, 640)
+    cfg.SOLVER.MAX_TO_KEEP = 3
+    
     # for poly lr schedule
     add_deeplab_config(cfg)
     add_maskformer2_config(cfg)
     cfg.merge_from_file(args.config_file)
     cfg.merge_from_list(args.opts)
+    
+
     cfg.freeze()
     default_setup(cfg, args)
     # Setup logger for "mask_former" module

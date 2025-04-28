@@ -1,0 +1,53 @@
+_BASE_: "../cityscapes/semantic-segmentation/swin/maskformer2_swin_tiny_bs16_90k.yaml"
+
+
+DATASETS:
+  TRAIN: ("Drivability-Labelling-8_train",)
+  TEST:  ("Drivability-Labelling-8_val",)
+
+INPUT:
+  DATASET_MAPPER_NAME: "drivability_labelling_8_semantic_segmentation"
+  IMAGE_SIZE: 640
+  MIN_SIZE_TRAIN: (640,)
+  MAX_SIZE_TRAIN: 640
+  MIN_SIZE_TEST: 640
+  MAX_SIZE_TEST: 640
+  CROP:
+    ENABLED: True
+    TYPE: "absolute"
+    SIZE: (640, 640)
+
+MODEL:                       # ← SINGLE block only
+  WEIGHTS: "/home/felix/workspace/Mask2Former/model_final_2d58d4.pkl"
+  SEM_SEG_HEAD:
+    NUM_CLASSES: 5
+  BACKBONE:
+    NAME: "D2SwinTransformer"
+  SWIN:
+    EMBED_DIM: 96
+    DEPTHS: [2, 2, 6, 2]
+    NUM_HEADS: [3, 6, 12, 24]
+    WINDOW_SIZE: 7
+    APE: False
+    DROP_PATH_RATE: 0.3
+    PATCH_NORM: True
+  PIXEL_MEAN: [123.675, 116.280, 103.530]
+  PIXEL_STD:  [58.395, 57.120, 57.375]
+
+SOLVER:
+  IMS_PER_BATCH: 12
+  AMP: { ENABLED: True }
+  CHECKPOINT_PERIOD: 1000     # save ~every 1000 iters
+  MAX_ITER: 20000
+  MAX_TO_KEEP: 20
+TEST:
+  EVAL_PERIOD: 1000           # eval & save at the same cadence
+
+MASK_LOGGER:
+  ENABLED: True
+  PERIOD: 100
+  SIZE: (640, 640)
+
+
+OUTPUT_DIR: "output/Drivability-Labelling-8_swinT_sem"
+

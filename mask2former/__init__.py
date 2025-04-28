@@ -17,7 +17,9 @@ from .data.dataset_mappers.mask_former_panoptic_dataset_mapper import (
 from .data.dataset_mappers.mask_former_semantic_dataset_mapper import (
     MaskFormerSemanticDatasetMapper,
 )
-
+from .data.dataset_mappers.Drivability_Labelling_8_semantic_segmentation_dataset_mapper import (
+    DrivabilityLabelling8SemanticSegmentationDatasetMapper,
+)
 # models
 from .maskformer_model import MaskFormer
 from .test_time_augmentation import SemanticSegmentorWithTTA
