@@ -41,12 +41,30 @@ def get_extensions():
         extension = CUDAExtension
         sources += source_cuda
         define_macros += [("WITH_CUDA", None)]
-        extra_compile_args["nvcc"] = [
+
+        # Basic CUDA flags
+        nvcc_flags = [
             "-DCUDA_HAS_FP16=1",
             "-D__CUDA_NO_HALF_OPERATORS__",
             "-D__CUDA_NO_HALF_CONVERSIONS__",
             "-D__CUDA_NO_HALF2_OPERATORS__",
         ]
+
+        # Only add arch flags if TORCH_CUDA_ARCH_LIST is explicitly set
+        arch_list = os.environ.get('TORCH_CUDA_ARCH_LIST', '')
+        if arch_list:
+            arch_flags = []
+            for arch in arch_list.split(','):
+                arch = arch.strip()
+                if arch:
+                    compute = arch.replace('.', '')
+                    arch_flags.extend([
+                        f"-gencode=arch=compute_{compute},code=sm_{compute}",
+                        f"-gencode=arch=compute_{compute},code=compute_{compute}"
+                    ])
+            nvcc_flags.extend(arch_flags)
+
+        extra_compile_args["nvcc"] = nvcc_flags
     else:
         if CUDA_HOME is None:
             raise NotImplementedError('CUDA_HOME is None. Please set environment variable CUDA_HOME.')

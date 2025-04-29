@@ -22,7 +22,7 @@ sh make.sh
 #### Building on another system
 To build on a system that does not have a GPU device but provide the drivers:
 ```bash
-TORCH_CUDA_ARCH_LIST='8.0' FORCE_CUDA=1 python setup.py build install
+TORCH_CUDA_ARCH_LIST='7.2,8.0,8.7' FORCE_CUDA=1 python setup.py build install
 ```
 
 ### Example conda environment setup
@@ -45,4 +45,43 @@ cd Mask2Former
 pip install -r requirements.txt
 cd mask2former/modeling/pixel_decoder/ops
 sh make.sh
+```
+
+### Example environment setup for Jetson Orin AGX
+```bash
+conda create --name Mask2Former python=3.10 -y
+conda activate Mask2Former
+
+sudo CUDA_VERSION=12.4 bash ./install_cusparselt.sh
+
+export TORCH_INSTALL=https://pypi.jetson-ai-lab.dev/jp6/cu126/+f/6ef/f643c0a7acda9/torch-2.7.0-cp310-cp310-linux_aarch64.whl#sha256=6eff643c0a7acda92734cc798338f733ff35c7df1a4434576f5ff7c66fc97319
+
+python3 -m pip install --upgrade pip
+python3 -m pip install "numpy<2"
+python3 -m pip install --no-cache "$TORCH_INSTALL"
+
+git clone git@github.com:facebookresearch/detectron2.git
+cd detectron2
+pip install -e .
+pip install git+https://github.com/cocodataset/panopticapi.git
+pip install git+https://github.com/mcordts/cityscapesScripts.git
+
+cd ..
+git clone git@github.com:facebookresearch/Mask2Former.git
+cd Mask2Former
+pip install -r requirements.txt
+cd mask2former/modeling/pixel_decoder/ops
+
+
+export CFLAGS="$(python - <<'PY'
+import sysconfig, re
+print(re.sub(r'(-march=\S+|-mtune=\S+)', '', sysconfig.get_config_var("CFLAGS")))
+PY)"
+export CXXFLAGS="$CFLAGS"
+
+# Xavier uses 7.2, Orin uses 8.7 – pick the one that matches your board
+export TORCH_CUDA_ARCH_LIST="8.7"
+export FORCE_CUDA=1
+
+python setup.py install
 ```
