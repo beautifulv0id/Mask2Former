@@ -52,6 +52,7 @@ sh make.sh
 conda create --name Mask2Former python=3.10 -y
 conda activate Mask2Former
 
+wget raw.githubusercontent.com/pytorch/pytorch/5c6af2b583709f6176898c017424dc9981023c28/.ci/docker/common/install_cusparselt.sh 
 sudo CUDA_VERSION=12.4 bash ./install_cusparselt.sh
 
 export TORCH_INSTALL=https://pypi.jetson-ai-lab.dev/jp6/cu126/+f/6ef/f643c0a7acda9/torch-2.7.0-cp310-cp310-linux_aarch64.whl#sha256=6eff643c0a7acda92734cc798338f733ff35c7df1a4434576f5ff7c66fc97319
