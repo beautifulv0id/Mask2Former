@@ -51,6 +51,7 @@ from mask2former import (
     COCOInstanceNewBaselineDatasetMapper,
     COCOPanopticNewBaselineDatasetMapper,
     DrivabilityLabelling8SemanticSegmentationDatasetMapper,
+    DrivabilitySemanticSegmentationDatasetMapper,
     InstanceSegEvaluator,
     MaskFormerInstanceDatasetMapper,
     MaskFormerPanopticDatasetMapper,
@@ -60,9 +61,10 @@ from mask2former import (
 )
 
 from mask2former.utils.log_masks_hook import LogPredMasksHook
-import  mask2former.data.datasets.register_Drivability_Labelling_8_semantic_segmentation
+from mask2former.utils.early_stopping_hook import EarlyStoppingHook
 from detectron2.config import CfgNode as CN
 from detectron2.engine.hooks import PeriodicCheckpointer
+
 
 class Trainer(DefaultTrainer):
     """
@@ -175,6 +177,9 @@ class Trainer(DefaultTrainer):
             return build_detection_train_loader(cfg, mapper=mapper)
         elif cfg.INPUT.DATASET_MAPPER_NAME == "drivability_labelling_8_semantic_segmentation":
             mapper = DrivabilityLabelling8SemanticSegmentationDatasetMapper(cfg, True)
+            return build_detection_train_loader(cfg, mapper=mapper)
+        elif cfg.INPUT.DATASET_MAPPER_NAME == "drivability_semantic_segmentation":
+            mapper = DrivabilitySemanticSegmentationDatasetMapper(cfg, True)
             return build_detection_train_loader(cfg, mapper=mapper)
         else:
             mapper = None
@@ -307,6 +312,15 @@ class Trainer(DefaultTrainer):
             )
         )
 
+        # Add early stopping hook
+        if hasattr(self.cfg, "EARLY_STOPPING"):
+            hooks.append(EarlyStoppingHook(
+                period=self.cfg.TEST.EVAL_PERIOD,
+                patience=self.cfg.EARLY_STOPPING.PATIENCE,
+                min_delta=self.cfg.EARLY_STOPPING.MIN_DELTA,
+                metric_name=self.cfg.EARLY_STOPPING.METRIC_NAME
+            ))
+
         return hooks
 
 
@@ -322,6 +336,13 @@ def setup(args):
     cfg.MASK_LOGGER.NUM_SAMPLES = 5
     cfg.MASK_LOGGER.SIZE = (640, 640)
     cfg.SOLVER.MAX_TO_KEEP = 3
+    
+    # Add early stopping config
+    cfg.EARLY_STOPPING = CN()
+    cfg.EARLY_STOPPING.ENABLED = True
+    cfg.EARLY_STOPPING.PATIENCE = 5  # Number of evaluations to wait for improvement
+    cfg.EARLY_STOPPING.MIN_DELTA = 0.001  # Minimum change in metric to be considered as improvement
+    cfg.EARLY_STOPPING.METRIC_NAME = "sem_seg/mIoU"  # Metric to monitor
     
     # for poly lr schedule
     add_deeplab_config(cfg)

@@ -2,11 +2,11 @@ _BASE_: "../cityscapes/semantic-segmentation/swin/maskformer2_swin_tiny_bs16_90k
 
 
 DATASETS:
-  TRAIN: ("Drivability-Labelling-8_train",)
-  TEST:  ("Drivability-Labelling-8_val",)
+  TRAIN: ("Drivability_train",)
+  TEST:  ("Drivability_val",)
 
 INPUT:
-  DATASET_MAPPER_NAME: "drivability_labelling_8_semantic_segmentation"
+  DATASET_MAPPER_NAME: "drivability_semantic_segmentation"
   IMAGE_SIZE: 640
   MIN_SIZE_TRAIN: (640,)
   MAX_SIZE_TRAIN: 640
@@ -17,11 +17,10 @@ INPUT:
     TYPE: "absolute"
     SIZE: (640, 640)
 
-  # "/home/felix/workspace/Mask2Former/model_final_2d58d4.pkl"
-MODEL:                       # ← SINGLE block only
-  WEIGHTS: "output/Drivability-Labelling-8_swinT_sem_/model_0003099.pth"
+MODEL:
+  WEIGHTS: "/home/felix/workspace/Mask2Former/model_final_2d58d4.pkl"
   SEM_SEG_HEAD:
-    NUM_CLASSES: 6
+    NUM_CLASSES: 7
   BACKBONE:
     NAME: "D2SwinTransformer"
   SWIN:
@@ -36,7 +35,7 @@ MODEL:                       # ← SINGLE block only
   PIXEL_STD:  [58.395, 57.120, 57.375]
 
 SOLVER:
-  IMS_PER_BATCH: 12
+  IMS_PER_BATCH: 10
   AMP: { ENABLED: True }
   CHECKPOINT_PERIOD: 100     # save ~every 1000 iters
   MAX_ITER: 20000
@@ -49,6 +48,10 @@ MASK_LOGGER:
   PERIOD: 200
   SIZE: (640, 640)
 
+EARLY_STOPPING:
+  ENABLED: True
+  PATIENCE: 3  # Increase for more patience
+  MIN_DELTA: 0.001  # Adjust the minimum improvement threshold
+  METRIC_NAME: "sem_seg/mIoU"  # Change to monitor a different metric
 
-OUTPUT_DIR: "output/Drivability-Labelling-8_swinT_sem"
-
+OUTPUT_DIR: "output/Drivability_swinT_sem"

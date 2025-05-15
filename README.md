@@ -32,6 +32,165 @@ Integrated into [Huggingface Spaces 🤗](https://huggingface.co/spaces) using [
 
 Replicate web demo and docker image is available here: [![Replicate](https://replicate.com/facebookresearch/mask2former/badge)](https://replicate.com/facebookresearch/mask2former)
 
+## Training a New Semantic Segmentation Model
+
+### 1. Dataset Preparation
+Organize your dataset in the following structure:
+```
+dataset_root/
+├── train/
+│   ├── images/
+│   │   └── *.jpg
+│   └── masks/
+│       └── *.png
+└── valid/
+    ├── images/
+    │   └── *.jpg
+    └── masks/
+        └── *.png
+```
+
+### 2. Dataset Registration
+1. Create a new file in `mask2former/data/datasets/register_your_dataset.py`:
+```python
+from detectron2.data import DatasetCatalog, MetadataCatalog
+from detectron2.data.datasets.coco import load_sem_seg
+import os
+
+# Define your categories
+YOUR_DATASET_CATEGORIES = [
+    {"name": "background", "id": 0, "color": (0, 0, 0)},
+    {"name": "class1", "id": 1, "color": (255, 0, 0)},
+    # Add more classes as needed
+]
+
+def _get_dataset_meta():
+    stuff_ids = [k["id"] for k in YOUR_DATASET_CATEGORIES]
+    stuff_dataset_id_to_contiguous_id = {k: i for i, k in enumerate(stuff_ids)}
+    stuff_classes = [k["name"] for k in YOUR_DATASET_CATEGORIES]
+    stuff_colors = [k["color"] for k in YOUR_DATASET_CATEGORIES]
+    return {
+        "stuff_dataset_id_to_contiguous_id": stuff_dataset_id_to_contiguous_id,
+        "stuff_classes": stuff_classes,
+        "stuff_colors": stuff_colors,
+    }
+
+def register_all_your_dataset(root):
+    root = os.path.join(root, "your_dataset_name")
+    meta = _get_dataset_meta()
+    for name, dirname in [("train", "train"), ("val", "valid")]:
+        image_dir = os.path.join(root, dirname, "images")
+        gt_dir = os.path.join(root, dirname, "masks")
+        name = f"your_dataset_name_{name}"
+        DatasetCatalog.register(
+            name, lambda x=image_dir, y=gt_dir: load_sem_seg(y, x, gt_ext="png", image_ext="jpg")
+        )
+        MetadataCatalog.get(name).set(
+            stuff_classes=meta["stuff_classes"][:],
+            stuff_colors=meta["stuff_colors"][:],
+            image_root=image_dir,
+            sem_seg_root=gt_dir,
+            evaluator_type="sem_seg",
+            ignore_label=255,
+            stuff_dataset_id_to_contiguous_id=meta["stuff_dataset_id_to_contiguous_id"],
+        )
+```
+
+2. Add your dataset registration to `mask2former/data/datasets/__init__.py`:
+```python
+from . import (
+    # ... existing imports ...
+    register_your_dataset,
+)
+```
+
+### 3. Dataset Mapper
+Create a new file in `mask2former/data/dataset_mappers/your_dataset_mapper.py`:
+```python
+from mask2former.data.dataset_mappers.mask_former_semantic_dataset_mapper import (
+    MaskFormerSemanticDatasetMapper,
+)
+import detectron2.data.transforms as T
+
+class YourDatasetMapper(MaskFormerSemanticDatasetMapper):
+    """
+    Custom dataset mapper for your dataset
+    """
+    def __init__(self, cfg, is_train=True):
+        super().__init__(cfg, is_train)
+        # Customize augmentations as needed
+        self.augmentations = [
+            T.Resize((640, 640)),
+            T.RandomRotation(angle=[-180, 180], sample_style="range", expand=False),
+            T.RandomCrop("absolute", (640, 640)),
+        ]
+```
+
+### 4. Configuration
+Create a new config file in `configs/your_dataset/your_config.yaml`:
+```yaml
+_BASE_: "../mask2former/maskformer_swin_tiny_IN21k_384_bs16_160k.yaml"
+MODEL:
+  MASK_FORMER:
+    NUM_QUERIES: 100
+    TRANSFORMER_DECODER_NAME: "MultiScaleMaskedTransformerDecoder"
+    TRANSFORMER_IN_FEATURE: "res5"
+    COMMON_STRIDE: 32
+    NUM_CLASSES: <number_of_your_classes>
+  PIXEL_DECODER:
+    NAME: "BasePixelDecoder"
+    IN_FEATURES: ["res2", "res3", "res4", "res5"]
+    COMMON_STRIDE: 4
+    CONVS_DIM: 256
+    MASK_DIM: 256
+    NORM: "GN"
+    NUM_GROUPS: 32
+    USE_CHECKPOINT: False
+    IGNORE_VALUE: 255
+DATASETS:
+  TRAIN: ("your_dataset_name_train",)
+  TEST: ("your_dataset_name_val",)
+SOLVER:
+  IMS_PER_BATCH: 16
+  BASE_LR: 0.0001
+  MAX_ITER: 90000
+  STEPS: (60000, 80000)
+  GAMMA: 0.1
+  WARMUP_FACTOR: 1.0 / 1000
+  WARMUP_ITERS: 1000
+  WARMUP_METHOD: "linear"
+  CHECKPOINT_PERIOD: 5000
+  EVAL_PERIOD: 5000
+INPUT:
+  MIN_SIZE_TRAIN: (640, 672, 704, 736, 768, 800)
+  MAX_SIZE_TRAIN: 1333
+  MIN_SIZE_TEST: 800
+  MAX_SIZE_TEST: 1333
+  MASK_FORMAT: "polygon"
+DATALOADER:
+  NUM_WORKERS: 2
+  ASPECT_RATIO_GROUPING: True
+  REPEAT_THRESHOLD: 0.0
+  FILTER_EMPTY_ANNOTATIONS: True
+```
+
+### 5. Training
+Start training with:
+```bash
+python train_net.py \
+    --config-file configs/your_dataset/your_config.yaml \
+    --num-gpus 8 \
+    OUTPUT_DIR output/your_dataset
+```
+
+### Important Notes:
+1. Make sure your mask images are single-channel PNG files where pixel values correspond to class IDs
+2. The background class should have ID 0
+3. Set `ignore_label=255` for pixels you want to ignore during training
+4. Adjust the configuration parameters (learning rate, batch size, etc.) based on your dataset size and available GPU memory
+5. The dataset mapper's augmentations can be customized based on your needs
+6. Make sure to update the number of classes in the config file to match your dataset
+
 ## Advanced usage
 
 See [Advanced Usage of Mask2Former](ADVANCED_USAGE.md).
