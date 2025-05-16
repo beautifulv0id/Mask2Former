@@ -134,6 +134,25 @@ class YourDatasetMapper(MaskFormerSemanticDatasetMapper):
         ]
 ```
 
+### 4. Training
+Add your dataset mapper to to `train_net.py`.
+```
+from mask2former import (
+  # ... existing imports ...
+  YourDatasetMapper
+)
+# ...
+class Trainer(DefaultTrainer):
+# ... class code ...
+  @classmethod
+  def build_train_loader(cls, cfg):
+      # Semantic segmentation dataset mapper
+      if cfg.INPUT.DATASET_MAPPER_NAME == "your_dataset_mapper":
+          mapper = YourDatasetMapper(cfg, True)
+          return build_detection_train_loader(cfg, mapper=mapper)
+
+```
+
 ### 4. Configuration
 Create a new config file in `configs/your_dataset/your_config.yaml`:
 ```yaml
