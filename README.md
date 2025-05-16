@@ -33,7 +33,11 @@ Integrated into [Huggingface Spaces 🤗](https://huggingface.co/spaces) using [
 Replicate web demo and docker image is available here: [![Replicate](https://replicate.com/facebookresearch/mask2former/badge)](https://replicate.com/facebookresearch/mask2former)
 
 ## Training a New Semantic Segmentation Model
-
+### 0. Set Dataset Path
+First, let `detectron` know where your data lies.
+```
+exportDETECTRON2_DATASETS=path/to/datasets
+```
 ### 1. Dataset Preparation
 Organize your dataset in the following structure:
 ```
