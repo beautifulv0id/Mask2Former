@@ -36,7 +36,7 @@ Replicate web demo and docker image is available here: [![Replicate](https://rep
 ### 0. Set Dataset Path
 First, let `detectron` know where your data lies.
 ```
-exportDETECTRON2_DATASETS=path/to/datasets
+export DETECTRON2_DATASETS=path/to/datasets
 ```
 ### 1. Dataset Preparation
 Organize your dataset in the following structure:
