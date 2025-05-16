@@ -34,7 +34,7 @@ Replicate web demo and docker image is available here: [![Replicate](https://rep
 
 ## Training a New Semantic Segmentation Model
 ### 0. Set Dataset Path
-First, let `detectron` know where your data lies.
+First, let `detectron2` know where your data lies.
 ```
 export DETECTRON2_DATASETS=path/to/datasets
 ```
