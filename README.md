@@ -94,6 +94,10 @@ def register_all_your_dataset(root):
             ignore_label=255,
             stuff_dataset_id_to_contiguous_id=meta["stuff_dataset_id_to_contiguous_id"],
         )
+
+_root = os.getenv("DETECTRON2_DATASETS", "datasets")
+register_all_schwarmstudie(_root)
+
 ```
 
 2. Add your dataset registration to `mask2former/data/datasets/__init__.py`:
