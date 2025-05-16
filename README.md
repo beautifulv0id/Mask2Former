@@ -153,7 +153,7 @@ class Trainer(DefaultTrainer):
 
 ```
 
-### 4. Configuration
+### 5. Configuration
 Create a new config file in `configs/your_dataset/your_config.yaml`:
 ```yaml
 _BASE_: "../mask2former/maskformer_swin_tiny_IN21k_384_bs16_160k.yaml"
@@ -201,7 +201,7 @@ DATALOADER:
   FILTER_EMPTY_ANNOTATIONS: True
 ```
 
-### 5. Training
+### 6. Training
 Start training with:
 ```bash
 python train_net.py \
